@@ -101,7 +101,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                           children: [
                             SizedBox(height: 90.0),
                             Text(
-                              "Eddie Watson",
+                              "Rafid Khaulika",
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -109,7 +109,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                               ),
                             ),
                             Text(
-                              "@Eddie123",
+                              "@Rafid123",
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black54,
