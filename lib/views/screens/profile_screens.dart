@@ -125,8 +125,8 @@ class _ProfileScreens extends State<ProfileScreens> {
                                 crossAxisCount: 2,
                                 shrinkWrap: true,
                                 physics: NeverScrollableScrollPhysics(),
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
                                 childAspectRatio: 1.5, 
                                 children: [
                                   _buildBadgeCard(
