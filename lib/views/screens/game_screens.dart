@@ -4,10 +4,15 @@ import 'dart:math';
 import 'dart:async'; // <-- IMPORT BARU UNTUK TIMER
 
 // --- BAGIAN 1: MODEL DATA ---
+<<<<<<< HEAD
 // (Tidak ada perubahan)
+=======
+
+
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
 class Decision {
   final String label;
-  final bool appliesAmount;
+  final bool appliesAmount; 
 
   const Decision({required this.label, required this.appliesAmount});
 }
@@ -192,8 +197,7 @@ final List<GameEvent> gameLevels = [
   GameEvent(
     id: 13,
     title: 'Bonus Referral',
-    description:
-        'Ajak teman join dan dapat bonus Rp 50.000 per referral. 3 teman!',
+    description: 'Ajak teman join dan dapat bonus Rp 50.000 per referral. 3 teman!',
     type: 'income',
     color: Colors.green,
     amount: 150000,
@@ -217,8 +221,7 @@ final List<GameEvent> gameLevels = [
   GameEvent(
     id: 15,
     title: 'Pinjaman Ibu',
-    description:
-        'Ibu meminjamkan uang untuk biaya sekolah Rp 250.000 tanpa bunga.',
+    description: 'Ibu meminjamkan uang untuk biaya sekolah Rp 250.000 tanpa bunga.',
     type: 'family_loan',
     color: Colors.blue,
     amount: 250000,
@@ -320,9 +323,7 @@ final List<GameEvent> gameLevels = [
     amount: -150000,
     decisions: [
       Decision(label: 'Beli Baru', appliesAmount: true),
-      Decision(
-          label: 'Perbaiki',
-          appliesAmount: false), // Asumsi perbaiki lebih murah/gratis
+      Decision(label: 'Perbaiki', appliesAmount: false), // Asumsi perbaiki lebih murah/gratis
     ],
   ),
   GameEvent(
@@ -526,7 +527,11 @@ void _displayGameOver() {
   void _showChatbotPopup() {
     showDialog(
       context: context,
+<<<<<<< HEAD
       barrierColor: Colors.black.withAlpha(77),
+=======
+      barrierColor: Colors.black,
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
       builder: (BuildContext context) {
         return const ChatbotDialog(); // <-- PANGGILAN CLASS BENAR
       },
@@ -567,7 +572,11 @@ void _displayGameOver() {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
+<<<<<<< HEAD
                     color: Colors.black.withAlpha(77),
+=======
+                    color: Colors.black,
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
                     shape: BoxShape.circle,
                   ),
                   child: Image.asset(
@@ -670,6 +679,7 @@ class LevelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     final double tileWidth = MediaQuery.of(context).size.width * 0.65; // Lebar tile
     final double connectorHeight = 50.0; // Tinggi gambar konektor
     final double connectorWidth = 35.0; // Lebar gambar konektor
@@ -700,6 +710,61 @@ class LevelTile extends StatelessWidget {
                   connectorAsset, 
                   fit: BoxFit.contain,
                  ),
+=======
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        // Garis putus-putus
+        if (event.id != 0)
+          Positioned(
+            top: -13, // (8 margin + 5)
+            child: Container(
+              width: 4,
+              height: 15,
+              color: Colors.white,
+            ),
+          ),
+        Container(
+          height: 90,
+          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 40.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          decoration: BoxDecoration(
+            color: event.color.withOpacity(isCurrent ? 1.0 : 0.8),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isCurrent ? Colors.white : Colors.black54,
+              width: isCurrent ? 4 : 2,
+            ),
+            boxShadow: isCurrent
+                ? [
+                    BoxShadow(
+                      color: Colors.yellow.shade600,
+                      spreadRadius: 3,
+                      blurRadius: 8,
+                    )
+                  ]
+                : [
+                    const BoxShadow(
+                      color: Colors.black26,
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                      offset: Offset(0, 2),
+                    )
+                  ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                event.title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: isCurrent ? 16 : 14,
+                  color: Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
               ),
             ),
 
@@ -742,9 +807,14 @@ class LevelTile extends StatelessWidget {
                   Text(
                     event.title,
                     style: TextStyle(
+<<<<<<< HEAD
                       fontWeight: FontWeight.bold,
                       fontSize: isCurrent ? 16 : 14,
                       color: Colors.black87,
+=======
+                      fontSize: 11,
+                      color: Colors.black,
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -957,13 +1027,27 @@ class EventDialog extends StatelessWidget {
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
         decoration: BoxDecoration(
+<<<<<<< HEAD
           color: const Color(0xFF82D5FA).withAlpha(242),
+=======
+          color: const Color(0xFF82D5FA).withOpacity(0.95),
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: Colors.lightBlue.shade700,
             width: 3,
           ),
+<<<<<<< HEAD
           boxShadow: const [ BoxShadow( color: Colors.black38, spreadRadius: 3, blurRadius: 10,) ],
+=======
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black38,
+              spreadRadius: 3,
+              blurRadius: 10,
+            )
+          ],
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1018,7 +1102,11 @@ class EventDialog extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
+<<<<<<< HEAD
                         color: Colors.white .withAlpha(230),
+=======
+                        color: Colors.white.withOpacity(0.9),
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -1032,7 +1120,11 @@ class EventDialog extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
+<<<<<<< HEAD
                           color: Colors.white .withAlpha(217),
+=======
+                          color: Colors.white.withOpacity(0.85),
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all( color: _getAmountColor(), width: 2,),
                         ),
@@ -1094,7 +1186,11 @@ class GameOverDialog extends StatelessWidget {
         width: 300,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
+<<<<<<< HEAD
           color: Colors.red.shade400.withAlpha(230),
+=======
+          color: Colors.red.shade400.withOpacity(0.9),
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.red.shade700, width: 3),
         ),
@@ -1267,18 +1363,42 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
         width: 300,
         height: 450,
         decoration: BoxDecoration(
+<<<<<<< HEAD
           color: const Color(0xFF82D5FA).withAlpha(230),
           borderRadius: BorderRadius.circular(20),
           border: Border.all( color: Colors.lightBlue.shade700, width: 2,),
           boxShadow: const [ BoxShadow( color: Colors.black26, spreadRadius: 2, blurRadius: 8,) ],
+=======
+          color: const Color(0xFF82D5FA).withOpacity(0.9),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.lightBlue.shade700,
+            width: 2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              spreadRadius: 2,
+              blurRadius: 8,
+            )
+          ],
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
         ),
         child: Column(
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
+<<<<<<< HEAD
                 color: Colors.lightBlue.shade400 .withAlpha(179),
                 borderRadius: const BorderRadius.only( topLeft: Radius.circular(18), topRight: Radius.circular(18),),
+=======
+                color: Colors.lightBlue.shade400.withOpacity(0.7),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(18),
+                ),
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1310,7 +1430,13 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric( horizontal: 12, vertical: 8,),
                         decoration: BoxDecoration(
+<<<<<<< HEAD
                           color: isBot ? Colors.white.withAlpha(230) : Colors.lightBlue.shade600,
+=======
+                          color: isBot
+                              ? Colors.white.withOpacity(0.9)
+                              : Colors.lightBlue.shade600,
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text( msg['text'] ?? '', style: TextStyle( color: isBot ? Colors.black87 : Colors.white, fontSize: 12,),),
@@ -1331,9 +1457,21 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                         hintText: 'Ketik pesan...',
                         hintStyle: const TextStyle( color: Colors.black54, fontSize: 12,),
                         filled: true,
+<<<<<<< HEAD
                         fillColor: Colors.white .withAlpha(204),
                         border: OutlineInputBorder( borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none,),
                         contentPadding: const EdgeInsets.symmetric( horizontal: 12, vertical: 10,),
+=======
+                        fillColor: Colors.white.withOpacity(0.8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+>>>>>>> eb17da706e9e2b5e5e3fa0af4dc276c13bd43d4b
                       ),
                       style: const TextStyle(fontSize: 12),
                     ),
