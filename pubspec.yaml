@@ -29,9 +29,9 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: false        # ubah ke true kalau nanti build di Mac
-  image_path: "assets/icon.svg"   # path ke file icon kamu
+  image_path: "assets/logo.png"   # path ke file icon kamu
   adaptive_icon_background: "#ffffff"  # warna background untuk Android 8+
-  adaptive_icon_foreground: "assets/icon.png"
+  adaptive_icon_foreground: "assets/logo.png"
 
 
 
