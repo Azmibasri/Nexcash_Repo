@@ -3,7 +3,6 @@ import 'package:nexcash_mvp/views/screens/home_screens.dart';
 import 'game_screens.dart';
 import 'leaderboard_screens.dart';
 
-
 class ProfileScreens extends StatefulWidget {
   const ProfileScreens({super.key});
 
@@ -12,8 +11,6 @@ class ProfileScreens extends StatefulWidget {
 }
 
 class _ProfileScreens extends State<ProfileScreens> {
-
-
   void _onItemTapped(int index) {
     if (index == 1) {
       Navigator.push(
@@ -31,25 +28,23 @@ class _ProfileScreens extends State<ProfileScreens> {
         MaterialPageRoute(builder: (context) => HomeScreens()),
       );
     } else if (index == 4) {
-
       Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => HomeScreens()),
       );
     }
-
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        bottom: false, 
+        bottom: false,
         child: Container(
           width: double.infinity,
           height: double.infinity,
           decoration: BoxDecoration(
-            color: const Color.fromARGB(255, 93, 143, 230), 
+            color: const Color.fromARGB(255, 93, 143, 230),
           ),
           child: Column(
             children: [
@@ -62,8 +57,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                     alignment: Alignment.centerRight,
                     child: IconButton(
                       icon: Icon(Icons.settings, color: Colors.white, size: 30),
-                      onPressed: () =>
-                          _onItemTapped(4), 
+                      onPressed: () => _onItemTapped(4),
                     ),
                   ),
                 ),
@@ -75,9 +69,10 @@ class _ProfileScreens extends State<ProfileScreens> {
                   child: Text(
                     "Profile",
                     style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white),
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -102,7 +97,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                           children: [
                             SizedBox(height: 90.0),
                             Text(
-                              "Rafid Kaulita",
+                              "Rafid Khaulika",
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -121,14 +116,16 @@ class _ProfileScreens extends State<ProfileScreens> {
                             _buildSectionHeader("Badges (4)"),
                             Padding(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0, vertical: 8.0),
+                                horizontal: 16.0,
+                                vertical: 8.0,
+                              ),
                               child: GridView.count(
                                 crossAxisCount: 2,
                                 shrinkWrap: true,
                                 physics: NeverScrollableScrollPhysics(),
                                 crossAxisSpacing: 12,
                                 mainAxisSpacing: 12,
-                                childAspectRatio: 1.0, 
+                                childAspectRatio: 1.0,
                                 children: [
                                   _buildBadgeCard(
                                     Image.asset("assets/leader.png"),
@@ -136,18 +133,29 @@ class _ProfileScreens extends State<ProfileScreens> {
                                     "World Rank",
                                   ),
                                   _buildBadgeCard(
-                                    Image.asset("assets/coins.png",width: 40,height: 40,),
+                                    Image.asset(
+                                      "assets/coins.png",
+                                      width: 40,
+                                      height: 40,
+                                    ),
                                     "1444 XP",
                                     "XP Total",
                                   ),
                                   _buildBadgeCard(
-                                    Image.asset("assets/fire.png",width: 40,height: 40,),
+                                    Image.asset(
+                                      "assets/fire.png",
+                                      width: 40,
+                                      height: 40,
+                                    ),
                                     "12",
                                     "Days Streak",
                                   ),
                                   _buildBadgeCard(
-                                    Icon(Icons.favorite,
-                                        color: Colors.red, size: 30),
+                                    Icon(
+                                      Icons.favorite,
+                                      color: Colors.red,
+                                      size: 30,
+                                    ),
                                     "0",
                                     "Heart Loss",
                                   ),
@@ -159,7 +167,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                             _buildSectionHeader("Friends (4)"),
                             SizedBox(height: 8),
                             _buildFriendsList(),
-                            SizedBox(height: 30), 
+                            SizedBox(height: 30),
                           ],
                         ),
                       ),
@@ -172,8 +180,9 @@ class _ProfileScreens extends State<ProfileScreens> {
                         color: Color.fromARGB(255, 161, 194, 189),
                         shape: BoxShape.circle,
                         border: Border.all(
-                            color: Color.fromARGB(255, 161, 194, 189),
-                            width: 2),
+                          color: Color.fromARGB(255, 161, 194, 189),
+                          width: 2,
+                        ),
                       ),
                       child: CircleAvatar(
                         radius: 70,
@@ -187,7 +196,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                     ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),
@@ -260,19 +269,10 @@ class _ProfileScreens extends State<ProfileScreens> {
           SizedBox(height: 8),
           Text(
             title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.black54,
-            ),
-          ),
+          Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.black54)),
         ],
       ),
     );
