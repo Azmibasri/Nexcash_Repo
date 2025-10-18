@@ -13,7 +13,8 @@ class ChatbotService {
   ///
   /// The [conversationHistory] is a list of maps, each containing a 'sender' and 'text'.
   /// This history is converted to the required JSON format for the API.
-  static Future<String> sendMessage(List<Map<String, String>> conversationHistory) async {
+  static Future<String> sendMessage(
+      List<Map<String, String>> conversationHistory) async {
     try {
       // Convert the internal message format to the API's expected format.
       // We map 'user' to 'user' and 'bot' to 'assistant' for standard practice.
@@ -29,22 +30,24 @@ class ChatbotService {
         'messages': apiMessages,
       };
 
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(requestBody),
-      ).timeout(const Duration(seconds: 15)); // Increased timeout for potentially longer context
+      final response = await http
+          .post(
+            Uri.parse(apiUrl),
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: jsonEncode(requestBody),
+          )
+          .timeout(const Duration(seconds: 15)); // Increased timeout
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['reply'] ?? 'Maaf, saya tidak bisa merespons saat ini.';
+        return data['content'] ?? 'Maaf, saya tidak bisa merespons saat ini.';
       } else {
         return 'Terjadi kesalahan. Status: ${response.statusCode}';
       }
     } on TimeoutException {
-        return 'Waktu koneksi habis. Silakan coba lagi.';
+      return 'Waktu koneksi habis. Silakan coba lagi.';
     } catch (e) {
       return 'Koneksi gagal. Pastikan internet Anda aktif.';
     }
@@ -1260,51 +1263,38 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
   final List<Map<String, String>> messages = [
     {'sender': 'bot', 'text': 'Halo! Apa yang bisa saya bantu?'}
   ];
-  bool isLoading = false;
-  final ScrollController _scrollController = ScrollController();
+  
+  // Variabel baru untuk melacak status loading
+  bool _isLoading = false;
 
-  @override
-  void dispose() {
-    messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
+  // Fungsi _sendMessage yang sudah dimodifikasi
   void _sendMessage() async {
-    if (messageController.text.isEmpty || isLoading) return;
+    final userMessageText = messageController.text;
+    // Jangan kirim jika kosong atau sedang loading
+    if (userMessageText.isEmpty || _isLoading) return;
 
-    final userMessage = messageController.text;
-    messageController.clear();
-
+    // 1. Update UI dengan pesan pengguna & set status loading
     setState(() {
-      messages.add({'sender': 'user', 'text': userMessage});
-      isLoading = true;
+      _isLoading = true;
+      messages.add({'sender': 'user', 'text': userMessageText});
+      messageController.clear();
     });
 
-    _scrollToBottom();
-
-    // Panggil API chatbot
-    final botResponse = await ChatbotService.sendMessage(userMessage);
-
-    if (mounted) {
-      setState(() {
-        messages.add({'sender': 'bot', 'text': botResponse});
-        isLoading = false;
-      });
-      _scrollToBottom();
+    // 2. Panggil API dengan seluruh riwayat percakapan
+    // Kita menggunakan try-catch di sini untuk menangani error dari service
+    String botReply;
+    try {
+      // 'messages' sekarang berisi pesan pengguna yang baru
+      botReply = await ChatbotService.sendMessage(messages);
+    } catch (e) {
+      botReply = "Oops, terjadi error: $e";
     }
+
+    // 3. Update UI dengan respon bot & matikan status loading
+    setState(() {
+      messages.add({'sender': 'bot', 'text': botReply});
+      _isLoading = false;
+    });
   }
 
   @override
@@ -1331,7 +1321,6 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
         ),
         child: Column(
           children: [
-            // Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
@@ -1373,12 +1362,10 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                 ],
               ),
             ),
-            // Chat Area
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(12),
                 child: ListView.builder(
-                  controller: _scrollController,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
@@ -1411,29 +1398,6 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                 ),
               ),
             ),
-            // Loading indicator
-            if (isLoading)
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: SizedBox(
-                  height: 20,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    shrinkWrap: true,
-                    children: List.generate(
-                      3,
-                      (index) => Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: CircleAvatar(
-                          radius: 5,
-                          backgroundColor: Colors.lightBlue.shade700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            // Input Area
             Container(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -1441,9 +1405,10 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                   Expanded(
                     child: TextField(
                       controller: messageController,
-                      enabled: !isLoading,
+                      // Nonaktifkan textfield saat loading
+                      enabled: !_isLoading,
                       decoration: InputDecoration(
-                        hintText: 'Ketik pesan...',
+                        hintText: _isLoading ? 'Menunggu balasan...' : 'Ketik pesan...',
                         hintStyle: const TextStyle(
                           color: Colors.black54,
                           fontSize: 12,
@@ -1460,32 +1425,42 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                         ),
                       ),
                       style: const TextStyle(fontSize: 12),
-                      onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Modifikasi Tombol Kirim
                   GestureDetector(
-                    onTap: isLoading ? null : _sendMessage,
+                    // Nonaktifkan onTap saat loading
+                    onTap: _isLoading ? null : _sendMessage,
                     child: Container(
                       width: 36,
                       height: 36,
                       decoration: BoxDecoration(
-                        color: isLoading
+                        // Ubah warna saat loading
+                        color: _isLoading
                             ? Colors.grey
                             : Colors.lightBlue.shade700,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(
-                        Icons.send,
-                        color: Colors.white,
-                        size: 16,
-                      ),
+                      // Tampilkan spinner atau ikon kirim
+                      child: _isLoading
+                          ? const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.send,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                     ),
                   ),
                 ],
               ),
             ),
-            // Close Button
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
