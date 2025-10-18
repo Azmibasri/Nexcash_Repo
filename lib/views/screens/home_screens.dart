@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nexcash_mvp/views/screens/quix_screens.dart';
 import '../widgets/katru_daily.dart';
 import '../widgets/kartu_quiz.dart'; 
 import 'game_screens.dart';
@@ -32,6 +33,12 @@ class _HomeScreensState extends State<HomeScreens> {
         Navigator.push(
         context,
         MaterialPageRoute(builder: (context) => ProfileScreens()),
+      );
+    }  
+    else if(index == 11){
+        Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => QuixScreens()),
       );
     }  
   }
@@ -103,22 +110,39 @@ class _HomeScreensState extends State<HomeScreens> {
                         child: Padding(
                             padding: EdgeInsets.all(10),
                             child: ListView(children: [
+                              
                               KatruQuiz(
                                   bagian: "Part 1",
                                   judul: "Dasar Literasi Keuangan",
-                                  keterangan: "Complate"),
+                                  keterangan: "Complate",
+                                  onPressed: () => _onItemTapped(11),
+                                  ),
                               KatruQuiz(
                                   bagian: "Part 2",
                                   judul: "Dasar Literasi Keuangan",
-                                  keterangan: "Play now"),
+                                  keterangan: "Play now",
+                                  onPressed: () {
+                                    
+                                  },                                 
+                              ),
+                                  
                               KatruQuiz(
                                   bagian: "Part 3",
                                   judul: "Dasar Literasi Keuangan",
-                                  keterangan: "Locked"),
+                                  keterangan: "Locked",
+                                  onPressed: () {
+                                    
+                                  },
+                                  ),
                               KatruQuiz(
                                   bagian: "Part 4",
                                   judul: "Dasar Literasi Keuangan",
-                                  keterangan: "Locked"),
+                                  keterangan: "Locked",
+                                  onPressed: () {
+                                    
+                                  },
+                                  ),
+
                             ]))))
               ],
             ),
