@@ -1,7 +1,55 @@
-// --- BAGIAN 0: IMPORTS ---
 import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async'; 
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+// --- API SERVICE ---
+class ChatbotService {
+  // The API endpoint URL for the chatbot.
+  static const String apiUrl = 'https://nexcash-repo.vercel.app/chat';
+
+  /// Sends the entire conversation history to the chatbot API and returns the reply.
+  ///
+  /// The [conversationHistory] is a list of maps, each containing a 'sender' and 'text'.
+  /// This history is converted to the required JSON format for the API.
+  static Future<String> sendMessage(List<Map<String, String>> conversationHistory) async {
+    try {
+      // Convert the internal message format to the API's expected format.
+      // We map 'user' to 'user' and 'bot' to 'assistant' for standard practice.
+      final apiMessages = conversationHistory.map((message) {
+        return {
+          'role': message['sender'] == 'user' ? 'user' : 'assistant',
+          'content': message['text'],
+        };
+      }).toList();
+
+      // The final request body to be sent to the API.
+      final requestBody = {
+        'messages': apiMessages,
+      };
+
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      ).timeout(const Duration(seconds: 15)); // Increased timeout for potentially longer context
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['reply'] ?? 'Maaf, saya tidak bisa merespons saat ini.';
+      } else {
+        return 'Terjadi kesalahan. Status: ${response.statusCode}';
+      }
+    } on TimeoutException {
+        return 'Waktu koneksi habis. Silakan coba lagi.';
+    } catch (e) {
+      return 'Koneksi gagal. Pastikan internet Anda aktif.';
+    }
+  }
+}
 
 // --- BAGIAN 1: MODEL DATA ---
 class Decision {
@@ -31,9 +79,7 @@ class GameEvent {
   });
 }
 
-
 // --- BAGIAN 2: DATA GAME ---
-// (Tidak ada perubahan)
 final List<GameEvent> gameLevels = [
   GameEvent(
     id: 0,
@@ -125,7 +171,7 @@ final List<GameEvent> gameLevels = [
     amount: 100000,
     decisions: [
       Decision(label: 'Ambil', appliesAmount: true),
-      Decision(label: 'Biarkan', appliesAmount: true), // 'keep' tetap menambah
+      Decision(label: 'Biarkan', appliesAmount: true), 
     ],
   ),
   GameEvent(
@@ -247,7 +293,7 @@ final List<GameEvent> gameLevels = [
     amount: 400000,
     decisions: [
       Decision(label: 'Ambil Hasil', appliesAmount: true),
-      Decision(label: 'Reinvestasi', appliesAmount: true), // Reinvest tetap ambil hasil
+      Decision(label: 'Reinvestasi', appliesAmount: true), 
     ],
   ),
   GameEvent(
@@ -321,7 +367,7 @@ final List<GameEvent> gameLevels = [
       Decision(label: 'Beli Baru', appliesAmount: true),
       Decision(
           label: 'Perbaiki',
-          appliesAmount: false), // Asumsi perbaiki lebih murah/gratis
+          appliesAmount: false),
     ],
   ),
   GameEvent(
@@ -335,9 +381,7 @@ final List<GameEvent> gameLevels = [
   ),
 ];
 
-
 // --- BAGIAN 3: APLIKASI UTAMA ---
-// (Tidak ada perubahan)
 void main() {
   runApp(const QuixApp());
 }
@@ -365,8 +409,9 @@ class GameScreens extends StatelessWidget {
   }
 }
 
-// --- BAGIAN 4: LOGIKA & STATE UTAMA GAME ---
 
+
+// --- BAGIAN 4: LOGIKA & STATE UTAMA GAME ---
 class MonopolyBoard extends StatefulWidget {
   const MonopolyBoard({super.key});
 
@@ -376,8 +421,7 @@ class MonopolyBoard extends StatefulWidget {
 
 class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateMixin {
   int currentPosition = 0;
-  // --- PERBAIKAN 1: Kembalikan Saldo Awal ---
-  int balance = 100000; // <-- Ubah kembali ke 1.000.000 (atau sesuai keinginanmu)
+  int balance = 100000; 
   int diceResult = 0;
   bool isRolling = false;
   GameEvent? currentEventData;
@@ -431,14 +475,11 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
         _scrollController.position.minScrollExtent,
         _scrollController.position.maxScrollExtent);
 
-    // Animate scroll first
     _scrollController.animateTo(
       targetOffset,
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
     ).whenComplete(() {
-        // Update state *after* scroll animation completes
-        // Check if mounted before updating state after async gap
         if (!mounted) return;
          setState(() {
             currentPosition = newPosition;
@@ -448,26 +489,10 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
             _showDiceDisplay = false;
          });
 
-        // Check for game over *after* state update and potential dialog show
         if (balance < 0) {
             _showGameOverDialog();
         }
     });
-
-    // Don't update state immediately here, wait for scroll animation
-    // setState(() {
-    //   currentPosition = newPosition;
-    //   currentEventData = levels[currentPosition];
-    //   showEventDialog = true;
-    //   isRolling = false;
-    //   _showDiceDisplay = false;
-    // });
-
-    // if (balance < 0) {
-    //   Future.delayed(const Duration(milliseconds: 600), () {
-    //      _showGameOverDialog();
-    //   });
-    // }
   }
 
 
@@ -478,19 +503,15 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
       changeAmount = currentEventData?.amount ?? 0;
     }
 
-    // Tutup dialog event SEBELUM update balance & cek game over
     setState(() {
-      showEventDialog = false; // Close event dialog immediately
+      showEventDialog = false;
     });
 
 
-    // Beri jeda sedikit agar dialog event sempat tertutup
-    // sebelum update state balance & potensi game over
      Future.delayed(const Duration(milliseconds: 50), () {
-        if (!mounted) return; // Cek mounted setelah delay
+        if (!mounted) return; 
         setState(() {
           balance += changeAmount;
-          // Cek game over SETELAH balance diupdate
           if (balance < 0) {
             _showGameOverDialog();
           }
@@ -503,8 +524,7 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
   void resetGame() {
     setState(() {
       currentPosition = 0;
-      // --- PERBAIKAN 1: Sesuaikan Saldo Reset ---
-      balance = 100000; // <-- Pastikan sama dengan saldo awal
+      balance = 100000; 
       diceResult = 0;
       showEventDialog = false;
       currentEventData = null;
@@ -517,24 +537,21 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
     });
   }
 
-  // --- PERBAIKAN 2: Sederhanakan Logika Tampil Game Over ---
   void _showGameOverDialog() {
-    if (!mounted) return; // Pastikan widget masih ada
+    if (!mounted) return; 
 
-    // Langsung panggil fungsi display helper
+
     _displayGameOver();
   }
 
   void _displayGameOver() {
    if (mounted) {
        showDialog(
-          context: context, // Gunakan context dari _MonopolyBoardState
+          context: context, 
           barrierDismissible: false,
-          builder: (dialogContext) => GameOverDialog( // <-- Beri nama context berbeda
+          builder: (dialogContext) => GameOverDialog( 
             onReset: () {
-              // Gunakan dialogContext untuk menutup dialog
               Navigator.pop(dialogContext);
-              // Panggil reset game
               resetGame();
             },
           ),
@@ -544,7 +561,6 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
 
 
   void _showChatbotPopup() {
-    // Pastikan context valid sebelum showDialog
     if (!mounted) return;
     showDialog(
       context: context,
@@ -557,8 +573,6 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    // ... (build method tidak berubah signifikan, pastikan pemanggilan widget
-    //      seperti GameControls, DiceDisplay, EventDialog sudah benar)
     return SafeArea(
       bottom: false,
       child: Container(
@@ -586,7 +600,6 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
               left: 16.0,
               child: GestureDetector(
                 onTap: () {
-                   // Pastikan aman untuk pop
                    if (Navigator.canPop(context)) {
                       Navigator.of(context).pop();
                    }
@@ -678,8 +691,6 @@ class BoardListView extends StatelessWidget {
   }
 }
 
-/// Widget untuk satu kotak level di board (MODIFIKASI ZIG-ZAG & KONEKTOR)
-/// Widget untuk satu kotak level di board (MODIFIKASI UKURAN TANGGA & SHADOW)
 class LevelTile extends StatelessWidget {
   final GameEvent event;
   final bool isCurrent;
@@ -700,30 +711,24 @@ class LevelTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final double tileWidth = MediaQuery.of(context).size.width * 0.65;
 
-    // --- PERBESAR UKURAN KONEKTOR (TANGGA) ---
-    final double connectorHeight = 90.0; // <-- Diperbesar (sebelumnya 50)
-    final double connectorWidth = 90.0;  // <-- Diperbesar (sebelumnya 35)
-    const String connectorAsset = 'assets/ladder1.png'; // Selalu tangga
-
-    // Sesuaikan tinggi SizedBox agar ada ruang cukup untuk tangga yang lebih besar
+    final double connectorHeight = 90.0; 
+    final double connectorWidth = 90.0;  
+    const String connectorAsset = 'assets/ladder1.png'; 
     final double spaceForConnector = connectorHeight / 1.6;
 
     return SizedBox(
-      height: 90 + (isLast ? 0 : spaceForConnector), // Tinggi tile + ruang tangga
+      height: 90 + (isLast ? 0 : spaceForConnector), 
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // --- KONEKTOR (Gambar Tangga) ---
           if (!isLast)
             Positioned(
-              // Naikkan tangga agar pas di antara tile
-              top: -spaceForConnector, // <-- Sesuaikan posisi top
-              // Posisikan kiri/kanan berdasarkan alignment tile
+              top: -spaceForConnector, 
               left: isLeftAligned ? tileWidth * 0.8 : null,
               right: !isLeftAligned ? tileWidth * 0.8 : null,
               child: SizedBox(
-                width: connectorWidth, // Gunakan lebar baru
-                height: connectorHeight, // Gunakan tinggi baru
+                width: connectorWidth,
+                height: connectorHeight, 
                 child: Image.asset(
                   connectorAsset,
                   fit: BoxFit.contain,
@@ -746,16 +751,15 @@ class LevelTile extends StatelessWidget {
                   color: isCurrent ? Colors.white : Colors.black54,
                   width: isCurrent ? 4 : 2,
                 ),
-                // --- HILANGKAN SHADOW JIKA BUKAN POSISI SEKARANG ---
                 boxShadow: isCurrent
-                    ? [ // Shadow hanya untuk tile aktif
+                    ? [ 
                         BoxShadow(
                           color: Colors.yellow.shade600,
                           spreadRadius: 3,
                           blurRadius: 8,
                         )
                       ]
-                    : null, // <-- Tidak ada shadow untuk tile lain
+                    : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -788,7 +792,6 @@ class LevelTile extends StatelessWidget {
             ),
           ),
 
-          // Label 'POSISI KU'
           if (isCurrent)
             Positioned(
               top: -8,
@@ -833,7 +836,7 @@ class DiceDisplay extends StatefulWidget {
 class _DiceDisplayState extends State<DiceDisplay> with TickerProviderStateMixin {
   Timer? _rollTimer;
   late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation; // <-- VARIABEL ANIMASI
+  late Animation<double> _scaleAnimation; 
   bool _showResultNumber = false;
 
   static const String _diceAssetPath = 'assets/dice1.png';
@@ -847,22 +850,18 @@ class _DiceDisplayState extends State<DiceDisplay> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-    // Kaitkan CurvedAnimation ke _scaleAnimation
     _scaleAnimation = CurvedAnimation(
       parent: _scaleController,
       curve: Curves.easeOutBack,
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           Future.delayed(const Duration(milliseconds: 500), () {
-             if (mounted) widget.onAnimationComplete(); // Cek mounted sebelum panggil callback
+             if (mounted) widget.onAnimationComplete();
           });
         }
       });
 
      _rollTimer = Timer.periodic(const Duration(milliseconds: 80), (timer) {
-        // Efek getar kecil (opsional)
-        // Jika ingin, tambahkan sedikit perubahan rotasi atau offset acak di sini
-        // setState(() {});
      });
 
     Future.delayed(const Duration(milliseconds: 1200), () {
@@ -888,8 +887,7 @@ class _DiceDisplayState extends State<DiceDisplay> with TickerProviderStateMixin
       color: Colors.black.withAlpha(102),
       child: Center(
         child: ScaleTransition(
-          // Gunakan _scaleAnimation yang sudah punya curve
-          scale: _scaleAnimation, // <-- GUNAKAN _scaleAnimation
+          scale: _scaleAnimation,
           child: Container(
             width: 130,
             height: 130,
@@ -937,10 +935,6 @@ class _DiceDisplayState extends State<DiceDisplay> with TickerProviderStateMixin
   }
 }
 
-// --- Widget lain (EventDialog, GameOverDialog, GameControls, ChatbotDialog, NavbarPainter) ---
-// (Tidak perlu salin ulang karena tidak ada perubahan signifikan di sini)
-
-// Widget EventDialog (Tidak berubah)
 class EventDialog extends StatelessWidget {
   final GameEvent event;
   final int diceResult;
@@ -1098,7 +1092,6 @@ class EventDialog extends StatelessWidget {
   }
 }
 
-/// Widget untuk dialog Game Over (Pastikan ini ada)
 class GameOverDialog extends StatelessWidget {
   final VoidCallback onReset;
 
@@ -1112,7 +1105,7 @@ class GameOverDialog extends StatelessWidget {
         width: 300,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.red.shade400.withAlpha(230), // Opacity
+          color: Colors.red.shade400.withAlpha(230),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.red.shade700, width: 3),
         ),
@@ -1126,8 +1119,7 @@ class GameOverDialog extends StatelessWidget {
             const Text( 'Saldo kamu habis!', style: TextStyle(fontSize: 16, color: Colors.white),),
             const SizedBox(height: 24),
             ElevatedButton(
-              // --- PERBAIKAN 3: Pastikan onReset dipanggil ---
-              onPressed: onReset, // Langsung panggil callback
+              onPressed: onReset,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(10),),
@@ -1141,7 +1133,6 @@ class GameOverDialog extends StatelessWidget {
   }
 }
 
-// Widget GameControls (Tidak berubah)
 class GameControls extends StatelessWidget {
   final int balance;
   final int currentPosition;
@@ -1256,7 +1247,7 @@ class GameControls extends StatelessWidget {
   }
 }
 
-// Widget ChatbotDialog (Tidak berubah)
+// --- CHATBOT DIALOG DENGAN API ---
 class ChatbotDialog extends StatefulWidget {
   const ChatbotDialog({super.key});
 
@@ -1266,15 +1257,53 @@ class ChatbotDialog extends StatefulWidget {
 
 class _ChatbotDialogState extends State<ChatbotDialog> {
   final TextEditingController messageController = TextEditingController();
-  final List<Map<String, String>> messages = [ {'sender': 'bot', 'text': 'Halo! Apa yang bisa saya bantu?'} ];
+  final List<Map<String, String>> messages = [
+    {'sender': 'bot', 'text': 'Halo! Apa yang bisa saya bantu?'}
+  ];
+  bool isLoading = false;
+  final ScrollController _scrollController = ScrollController();
 
-  void _sendMessage() {
-    if (messageController.text.isNotEmpty) {
+  @override
+  void dispose() {
+    messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  void _sendMessage() async {
+    if (messageController.text.isEmpty || isLoading) return;
+
+    final userMessage = messageController.text;
+    messageController.clear();
+
+    setState(() {
+      messages.add({'sender': 'user', 'text': userMessage});
+      isLoading = true;
+    });
+
+    _scrollToBottom();
+
+    // Panggil API chatbot
+    final botResponse = await ChatbotService.sendMessage(userMessage);
+
+    if (mounted) {
       setState(() {
-        messages.add({ 'sender': 'user', 'text': messageController.text, });
-        messages.add({ 'sender': 'bot', 'text': 'Tips: Kelola uangmu dengan bijak, bedakan antara kebutuhan dan keinginan!', });
-        messageController.clear();
+        messages.add({'sender': 'bot', 'text': botResponse});
+        isLoading = false;
       });
+      _scrollToBottom();
     }
   }
 
@@ -1288,57 +1317,123 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
         decoration: BoxDecoration(
           color: const Color(0xFF82D5FA).withAlpha(230),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all( color: Colors.lightBlue.shade700, width: 2,),
-          boxShadow: const [ BoxShadow( color: Colors.black26, spreadRadius: 2, blurRadius: 8,) ],
+          border: Border.all(
+            color: Colors.lightBlue.shade700,
+            width: 2,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              spreadRadius: 2,
+              blurRadius: 8,
+            )
+          ],
         ),
         child: Column(
           children: [
+            // Header
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.lightBlue.shade400 .withAlpha(179),
-                borderRadius: const BorderRadius.only( topLeft: Radius.circular(18), topRight: Radius.circular(18),),
+                color: Colors.lightBlue.shade400.withAlpha(179),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(18),
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    width: 40, height: 40,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle, color: Colors.white,
-                      border: Border.all( color: Colors.lightBlue.shade700, width: 2,),
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(
+                        color: Colors.lightBlue.shade700,
+                        width: 2,
+                      ),
                     ),
-                    child: const Icon( Icons.chat_bubble, color: Colors.lightBlue, size: 20,),
+                    child: const Icon(
+                      Icons.chat_bubble,
+                      color: Colors.lightBlue,
+                      size: 20,
+                    ),
                   ),
-                  const Text( 'Panduan Finansial', style: TextStyle( color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600,),),
+                  const Text(
+                    'Panduan Finansial',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(width: 40),
                 ],
               ),
             ),
+            // Chat Area
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(12),
                 child: ListView.builder(
+                  controller: _scrollController,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final msg = messages[index];
                     final isBot = msg['sender'] == 'bot';
                     return Align(
-                      alignment: isBot ? Alignment.centerLeft : Alignment.centerRight,
+                      alignment:
+                          isBot ? Alignment.centerLeft : Alignment.centerRight,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric( horizontal: 12, vertical: 8,),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          color: isBot ? Colors.white.withAlpha(230) : Colors.lightBlue.shade600,
+                          color: isBot
+                              ? Colors.white.withAlpha(230)
+                              : Colors.lightBlue.shade600,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text( msg['text'] ?? '', style: TextStyle( color: isBot ? Colors.black87 : Colors.white, fontSize: 12,),),
+                        child: Text(
+                          msg['text'] ?? '',
+                          style: TextStyle(
+                            color: isBot ? Colors.black87 : Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
               ),
             ),
+            // Loading indicator
+            if (isLoading)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: SizedBox(
+                  height: 20,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    shrinkWrap: true,
+                    children: List.generate(
+                      3,
+                      (index) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: CircleAvatar(
+                          radius: 5,
+                          backgroundColor: Colors.lightBlue.shade700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // Input Area
             Container(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -1346,40 +1441,73 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                   Expanded(
                     child: TextField(
                       controller: messageController,
+                      enabled: !isLoading,
                       decoration: InputDecoration(
                         hintText: 'Ketik pesan...',
-                        hintStyle: const TextStyle( color: Colors.black54, fontSize: 12,),
+                        hintStyle: const TextStyle(
+                          color: Colors.black54,
+                          fontSize: 12,
+                        ),
                         filled: true,
-                        fillColor: Colors.white .withAlpha(204),
-                        border: OutlineInputBorder( borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none,),
-                        contentPadding: const EdgeInsets.symmetric( horizontal: 12, vertical: 10,),
+                        fillColor: Colors.white.withAlpha(204),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                       ),
                       style: const TextStyle(fontSize: 12),
+                      onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: _sendMessage,
+                    onTap: isLoading ? null : _sendMessage,
                     child: Container(
-                      width: 36, height: 36,
-                      decoration: BoxDecoration( color: Colors.lightBlue.shade700, shape: BoxShape.circle,),
-                      child: const Icon( Icons.send, color: Colors.white, size: 16,),
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isLoading
+                            ? Colors.grey
+                            : Colors.lightBlue.shade700,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.send,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+            // Close Button
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: ElevatedButton(
-                onPressed: () { Navigator.pop(context); },
+                onPressed: () {
+                  Navigator.pop(context);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.lightBlue.shade700,
-                  shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(10),),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                child: const Text( 'Tutup', style: TextStyle( color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14,),),
+                child: const Text(
+                  'Tutup',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
           ],
@@ -1389,8 +1517,6 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
   }
 }
 
-
-// Widget NavbarPainter (Tidak berubah)
 class NavbarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
