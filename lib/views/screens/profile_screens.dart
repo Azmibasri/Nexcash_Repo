@@ -105,7 +105,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                               ),
                             ),
                             Text(
-                              "@Eddie123",
+                              "@Rafid123",
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black54,
