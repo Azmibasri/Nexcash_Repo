@@ -1,7 +1,7 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=C:\Users\akilm\develop\flutter"
-export "FLUTTER_APPLICATION_PATH=C:\Users\akilm\OneDrive - MSFT\Donwload laptop\Documents\Nexco\Nexcash_Repo"
+export "FLUTTER_ROOT=D:\Aplikasi Luar\Dev\flutter"
+export "FLUTTER_APPLICATION_PATH=C:\Users\Lenovo\OneDrive\Dokumen\Karya\Hackthons\test\Nexcash_Repo"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"
