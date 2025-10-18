@@ -1,7 +1,7 @@
-
 import 'package:flutter/material.dart';
-import '../../models/question_model.dart'; 
+import '../../models/question_model.dart';
 import 'home_screens.dart';
+import 'xp_reward_screen.dart';
 
 class QuixScreens extends StatefulWidget {
   const QuixScreens({super.key});
@@ -11,17 +11,17 @@ class QuixScreens extends StatefulWidget {
 }
 
 class _QuixScreensState extends State<QuixScreens> {
-
   final List<Question> _quizQuestions = nexCashQuestions;
   int _currentQuestionIndex = 0;
   String? _selectedOption;
   int? _selectedOptionIndex;
   int _score = 0;
   int _lives = 5;
+  int _totalXp = 0;
 
   void onClick(int index) {
     if (index == 1) {
-      Navigator.push(
+      Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreens()),
       );
@@ -39,6 +39,7 @@ class _QuixScreensState extends State<QuixScreens> {
     if (_selectedOptionIndex ==
         _quizQuestions[_currentQuestionIndex].correctAnswerIndex) {
       _score++;
+      _totalXp += 10;
     } else {
       _lives--;
       if (_lives <= 0) {
@@ -63,28 +64,43 @@ class _QuixScreensState extends State<QuixScreens> {
       _currentQuestionIndex = 0;
       _score = 0;
       _lives = 5;
+      _totalXp = 0;
       _selectedOption = null;
       _selectedOptionIndex = null;
     });
   }
 
+  // BUG FIX: Menghapus deklarasi fungsi ganda
   void _showResultDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Kuis Selesai!'),
-        content: Text(
-          'Selamat! Anda telah menyelesaikan kuis dengan skor: $_score dari ${_quizQuestions.length} soal.',
-        ),
+        content: Text('Skor Anda: $_score dari ${_quizQuestions.length} soal.'),
         actions: <Widget>[
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _resetQuiz();
-            },
-            child: const Text('Ulangi Kuis'),
-          ),
+          if (_score > 5)
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop(); // Tutup dialog
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => XpRewardScreen(totalXp: _totalXp),
+                  ),
+                );
+                // _resetQuiz(); // <--- HAPUS BARIS INI
+              },
+              child: const Text('Klaim Hadiah XP'),
+            )
+          else
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _resetQuiz(); // Biarkan ini di sini untuk tombol "Ulangi Kuis"
+              },
+              child: const Text('Ulangi Kuis'),
+            ),
         ],
       ),
     );
@@ -136,11 +152,7 @@ class _QuixScreensState extends State<QuixScreens> {
               padding: const EdgeInsets.symmetric(horizontal: 4.0),
               child: Opacity(
                 opacity: index < _lives ? 1.0 : 0.3,
-                child: Image.asset(
-                  'assets/heart.png',
-                  width: 30,
-                  height: 30,
-                ),
+                child: Image.asset('assets/heart.png', width: 30, height: 30),
               ),
             );
           }),
@@ -162,10 +174,7 @@ class _QuixScreensState extends State<QuixScreens> {
               const SizedBox(height: 10),
               Container(
                 decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.black,
-                    width: 2,
-                  ),
+                  border: Border.all(color: Colors.black, width: 2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: ClipRRect(
@@ -209,8 +218,9 @@ class _QuixScreensState extends State<QuixScreens> {
                                     ? selectedOptionColor
                                     : optionButtonColor,
                                 foregroundColor: Colors.white,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
