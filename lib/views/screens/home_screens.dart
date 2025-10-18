@@ -114,13 +114,13 @@ class _HomeScreensState extends State<HomeScreens> {
                               KatruQuiz(
                                   bagian: "Part 1",
                                   judul: "Dasar Literasi Keuangan",
-                                  keterangan: "Complate",
+                                  keterangan: "Play",
                                   onPressed: () => _onItemTapped(11),
                                   ),
                               KatruQuiz(
                                   bagian: "Part 2",
                                   judul: "Dasar Literasi Keuangan",
-                                  keterangan: "Play now",
+                                  keterangan: "Locked",
                                   onPressed: () {
                                     
                                   },                                 
