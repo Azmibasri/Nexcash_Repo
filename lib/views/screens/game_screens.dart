@@ -377,7 +377,7 @@ class MonopolyBoard extends StatefulWidget {
 class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateMixin {
   int currentPosition = 0;
   // --- PERBAIKAN 1: Kembalikan Saldo Awal ---
-  int balance = 0; // <-- Ubah kembali ke 1.000.000 (atau sesuai keinginanmu)
+  int balance = 100000; // <-- Ubah kembali ke 1.000.000 (atau sesuai keinginanmu)
   int diceResult = 0;
   bool isRolling = false;
   GameEvent? currentEventData;
@@ -504,7 +504,7 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
     setState(() {
       currentPosition = 0;
       // --- PERBAIKAN 1: Sesuaikan Saldo Reset ---
-      balance = 0; // <-- Pastikan sama dengan saldo awal
+      balance = 100000; // <-- Pastikan sama dengan saldo awal
       diceResult = 0;
       showEventDialog = false;
       currentEventData = null;

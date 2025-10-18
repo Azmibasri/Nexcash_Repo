@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
-import '../../models/question_model.dart'; // Pastikan path ini benar
+import '../../models/question_model.dart'; 
+import 'home_screens.dart';
 
 class QuixScreens extends StatefulWidget {
   const QuixScreens({super.key});
@@ -10,13 +11,22 @@ class QuixScreens extends StatefulWidget {
 }
 
 class _QuixScreensState extends State<QuixScreens> {
-  // --- BAGIAN DATA & LOGIKA ---
+
   final List<Question> _quizQuestions = nexCashQuestions;
   int _currentQuestionIndex = 0;
   String? _selectedOption;
   int? _selectedOptionIndex;
   int _score = 0;
   int _lives = 5;
+
+  void onClick(int index) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreens()),
+      );
+    }
+  }
 
   void _answerQuestion(String option, int index) {
     setState(() {
@@ -117,7 +127,7 @@ class _QuixScreensState extends State<QuixScreens> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close, color: primaryTextColor, size: 30),
-          onPressed: () {},
+          onPressed: () => onClick(1),
         ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
