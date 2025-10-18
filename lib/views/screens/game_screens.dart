@@ -365,7 +365,6 @@ class GameScreens extends StatelessWidget {
   }
 }
 
-
 // --- BAGIAN 4: LOGIKA & STATE UTAMA GAME ---
 
 class MonopolyBoard extends StatefulWidget {
@@ -377,7 +376,8 @@ class MonopolyBoard extends StatefulWidget {
 
 class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateMixin {
   int currentPosition = 0;
-  int balance = 100000;
+  // --- PERBAIKAN 1: Kembalikan Saldo Awal ---
+  int balance = 100000; // <-- Ubah kembali ke 1.000.000 (atau sesuai keinginanmu)
   int diceResult = 0;
   bool isRolling = false;
   GameEvent? currentEventData;
@@ -431,26 +431,45 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
         _scrollController.position.minScrollExtent,
         _scrollController.position.maxScrollExtent);
 
+    // Animate scroll first
     _scrollController.animateTo(
       targetOffset,
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
-    );
+    ).whenComplete(() {
+        // Update state *after* scroll animation completes
+        // Check if mounted before updating state after async gap
+        if (!mounted) return;
+         setState(() {
+            currentPosition = newPosition;
+            currentEventData = levels[currentPosition];
+            showEventDialog = true;
+            isRolling = false;
+            _showDiceDisplay = false;
+         });
 
-    setState(() {
-      currentPosition = newPosition;
-      currentEventData = levels[currentPosition];
-      showEventDialog = true;
-      isRolling = false;
-      _showDiceDisplay = false;
+        // Check for game over *after* state update and potential dialog show
+        if (balance < 0) {
+            _showGameOverDialog();
+        }
     });
 
-    if (balance < 0) {
-      Future.delayed(const Duration(milliseconds: 600), () {
-         _showGameOverDialog();
-      });
-    }
+    // Don't update state immediately here, wait for scroll animation
+    // setState(() {
+    //   currentPosition = newPosition;
+    //   currentEventData = levels[currentPosition];
+    //   showEventDialog = true;
+    //   isRolling = false;
+    //   _showDiceDisplay = false;
+    // });
+
+    // if (balance < 0) {
+    //   Future.delayed(const Duration(milliseconds: 600), () {
+    //      _showGameOverDialog();
+    //   });
+    // }
   }
+
 
   void handleDecision(Decision decision) {
     int changeAmount = 0;
@@ -459,20 +478,33 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
       changeAmount = currentEventData?.amount ?? 0;
     }
 
+    // Tutup dialog event SEBELUM update balance & cek game over
     setState(() {
-      balance += changeAmount;
-      showEventDialog = false;
-
-      if (balance < 0) {
-         _showGameOverDialog(); // Tampilkan game over segera setelah keputusan
-      }
+      showEventDialog = false; // Close event dialog immediately
     });
+
+
+    // Beri jeda sedikit agar dialog event sempat tertutup
+    // sebelum update state balance & potensi game over
+     Future.delayed(const Duration(milliseconds: 50), () {
+        if (!mounted) return; // Cek mounted setelah delay
+        setState(() {
+          balance += changeAmount;
+          // Cek game over SETELAH balance diupdate
+          if (balance < 0) {
+            _showGameOverDialog();
+          }
+        });
+     });
+
   }
+
 
   void resetGame() {
     setState(() {
       currentPosition = 0;
-      balance = 100000;
+      // --- PERBAIKAN 1: Sesuaikan Saldo Reset ---
+      balance = 100000; // <-- Pastikan sama dengan saldo awal
       diceResult = 0;
       showEventDialog = false;
       currentEventData = null;
@@ -485,55 +517,48 @@ class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateM
     });
   }
 
+  // --- PERBAIKAN 2: Sederhanakan Logika Tampil Game Over ---
   void _showGameOverDialog() {
-    // Cek dulu apakah widget masih terpasang (mounted)
-    if (!mounted) return;
+    if (!mounted) return; // Pastikan widget masih ada
 
-    // Cek apakah ada dialog yang sedang tampil
-    bool isDialogActive = ModalRoute.of(context)?.isCurrent ?? false;
+    // Langsung panggil fungsi display helper
+    _displayGameOver();
+  }
 
-    // Jika ada dialog aktif, tutup dulu (misalnya EventDialog)
-    if (isDialogActive) {
-       Navigator.of(context).pop(); // Tutup dialog saat ini
-       // Beri jeda sedikit sebelum menampilkan dialog baru
-       Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) { // Cek lagi setelah jeda
-             _displayGameOver();
-          }
-       });
-    } else {
-       _displayGameOver(); // Langsung tampilkan jika tidak ada dialog
-    }
-}
-
-// Fungsi helper terpisah untuk menampilkan dialog
-void _displayGameOver() {
+  void _displayGameOver() {
    if (mounted) {
        showDialog(
-          context: context,
+          context: context, // Gunakan context dari _MonopolyBoardState
           barrierDismissible: false,
-          builder: (context) => GameOverDialog( // <-- PANGGILAN CLASS BENAR
+          builder: (dialogContext) => GameOverDialog( // <-- Beri nama context berbeda
             onReset: () {
-              if (mounted) Navigator.pop(context); // Tutup dialog
-              resetGame(); // Reset game
+              // Gunakan dialogContext untuk menutup dialog
+              Navigator.pop(dialogContext);
+              // Panggil reset game
+              resetGame();
             },
           ),
         );
    }
 }
 
+
   void _showChatbotPopup() {
+    // Pastikan context valid sebelum showDialog
+    if (!mounted) return;
     showDialog(
       context: context,
       barrierColor: Colors.black.withAlpha(77),
       builder: (BuildContext context) {
-        return const ChatbotDialog(); // <-- PANGGILAN CLASS BENAR
+        return const ChatbotDialog();
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // ... (build method tidak berubah signifikan, pastikan pemanggilan widget
+    //      seperti GameControls, DiceDisplay, EventDialog sudah benar)
     return SafeArea(
       bottom: false,
       child: Container(
@@ -561,7 +586,10 @@ void _displayGameOver() {
               left: 16.0,
               child: GestureDetector(
                 onTap: () {
-                  Navigator.of(context).pop();
+                   // Pastikan aman untuk pop
+                   if (Navigator.canPop(context)) {
+                      Navigator.of(context).pop();
+                   }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
@@ -582,7 +610,7 @@ void _displayGameOver() {
               bottom: 0,
               left: 0,
               right: 0,
-              child: GameControls( // <-- PANGGILAN CLASS BENAR
+              child: GameControls(
                 balance: balance,
                 currentPosition: currentPosition,
                 totalLevels: levels.length,
@@ -597,7 +625,7 @@ void _displayGameOver() {
                 onAnimationComplete: _processMove,
               ),
             if (showEventDialog && currentEventData != null)
-              EventDialog( // <-- PANGGILAN CLASS BENAR
+              EventDialog(
                 event: currentEventData!,
                 diceResult: diceResult,
                 onDecision: (decision) {
@@ -1070,7 +1098,7 @@ class EventDialog extends StatelessWidget {
   }
 }
 
-// Widget GameOverDialog (Tidak berubah)
+/// Widget untuk dialog Game Over (Pastikan ini ada)
 class GameOverDialog extends StatelessWidget {
   final VoidCallback onReset;
 
@@ -1084,7 +1112,7 @@ class GameOverDialog extends StatelessWidget {
         width: 300,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.red.shade400.withAlpha(230),
+          color: Colors.red.shade400.withAlpha(230), // Opacity
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.red.shade700, width: 3),
         ),
@@ -1098,7 +1126,8 @@ class GameOverDialog extends StatelessWidget {
             const Text( 'Saldo kamu habis!', style: TextStyle(fontSize: 16, color: Colors.white),),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: onReset,
+              // --- PERBAIKAN 3: Pastikan onReset dipanggil ---
+              onPressed: onReset, // Langsung panggil callback
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(10),),
