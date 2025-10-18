@@ -1,8 +1,10 @@
+// --- BAGIAN 0: IMPORTS ---
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'dart:async'; // <-- IMPORT BARU UNTUK TIMER
 
 // --- BAGIAN 1: MODEL DATA ---
-
+// (Tidak ada perubahan)
 class Decision {
   final String label;
   final bool appliesAmount;
@@ -30,8 +32,9 @@ class GameEvent {
   });
 }
 
-// --- BAGIAN 2: DATA GAME ---
 
+// --- BAGIAN 2: DATA GAME ---
+// (Tidak ada perubahan)
 final List<GameEvent> gameLevels = [
   GameEvent(
     id: 0,
@@ -333,8 +336,9 @@ final List<GameEvent> gameLevels = [
   ),
 ];
 
-// --- BAGIAN 3: APLIKASI UTAMA ---
 
+// --- BAGIAN 3: APLIKASI UTAMA ---
+// (Tidak ada perubahan)
 void main() {
   runApp(const QuixApp());
 }
@@ -362,6 +366,7 @@ class GameScreens extends StatelessWidget {
   }
 }
 
+
 // --- BAGIAN 4: LOGIKA & STATE UTAMA GAME ---
 
 class MonopolyBoard extends StatefulWidget {
@@ -371,49 +376,86 @@ class MonopolyBoard extends StatefulWidget {
   State<MonopolyBoard> createState() => _MonopolyBoardState();
 }
 
-class _MonopolyBoardState extends State<MonopolyBoard> {
-  // State inti dari game
+class _MonopolyBoardState extends State<MonopolyBoard> with TickerProviderStateMixin {
   int currentPosition = 0;
   int balance = 100000;
   int diceResult = 0;
   bool isRolling = false;
   GameEvent? currentEventData;
   bool showEventDialog = false;
-  final List<GameEvent> levels = gameLevels; // Ambil data dari list global
+  final List<GameEvent> levels = gameLevels;
 
-  /// Mengocok dadu dan memproses perpindahan
-  void rollDice() {
-    if (isRolling) return;
+  late ScrollController _scrollController;
+  bool _showDiceDisplay = false;
 
-    setState(() {
-      isRolling = true;
-    });
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      final random = Random();
-      final result = random.nextInt(6) + 1;
-
-      setState(() {
-        diceResult = result;
-        int newPosition = currentPosition + result;
-
-        if (newPosition >= levels.length) {
-          newPosition = levels.length - 1; // Cap di 'FINISH'
-        }
-
-        currentPosition = newPosition;
-        currentEventData = levels[currentPosition]; // Gunakan data model
-        showEventDialog = true;
-        isRolling = false;
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
     });
   }
 
-  /// Memproses keputusan pemain dari event dialog
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void rollDice() {
+    if (isRolling) return;
+
+    final random = Random();
+    final result = random.nextInt(6) + 1;
+
+    setState(() {
+      isRolling = true;
+      diceResult = result;
+      _showDiceDisplay = true;
+    });
+  }
+
+  void _processMove() {
+    int newPosition = currentPosition + diceResult;
+
+    if (newPosition >= levels.length) {
+      newPosition = levels.length - 1;
+    }
+
+    double targetOffset = (levels.length - 1 - newPosition) * 106.0;
+
+    targetOffset = targetOffset.clamp(
+        _scrollController.position.minScrollExtent,
+        _scrollController.position.maxScrollExtent);
+
+    _scrollController.animateTo(
+      targetOffset,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+
+    setState(() {
+      currentPosition = newPosition;
+      currentEventData = levels[currentPosition];
+      showEventDialog = true;
+      isRolling = false;
+      _showDiceDisplay = false;
+    });
+
+    if (balance < 0) {
+      Future.delayed(const Duration(milliseconds: 600), () {
+         _showGameOverDialog();
+      });
+    }
+  }
+
   void handleDecision(Decision decision) {
     int changeAmount = 0;
 
-    // Logika disederhanakan berkat model 'Decision'
     if (decision.appliesAmount) {
       changeAmount = currentEventData?.amount ?? 0;
     }
@@ -423,12 +465,11 @@ class _MonopolyBoardState extends State<MonopolyBoard> {
       showEventDialog = false;
 
       if (balance < 0) {
-        _showGameOverDialog();
+         _showGameOverDialog(); // Tampilkan game over segera setelah keputusan
       }
     });
   }
 
-  /// Mereset game ke kondisi awal
   void resetGame() {
     setState(() {
       currentPosition = 0;
@@ -436,63 +477,97 @@ class _MonopolyBoardState extends State<MonopolyBoard> {
       diceResult = 0;
       showEventDialog = false;
       currentEventData = null;
+      _showDiceDisplay = false;
+    });
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
     });
   }
 
-  /// Menampilkan dialog Game Over
   void _showGameOverDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => GameOverDialog(
-        onReset: () {
-          Navigator.pop(context); // Tutup dialog
-          resetGame(); // Reset game
-        },
-      ),
-    );
-  }
+    // Cek dulu apakah widget masih terpasang (mounted)
+    if (!mounted) return;
 
-  /// Menampilkan popup Chatbot
+    // Cek apakah ada dialog yang sedang tampil
+    bool isDialogActive = ModalRoute.of(context)?.isCurrent ?? false;
+
+    // Jika ada dialog aktif, tutup dulu (misalnya EventDialog)
+    if (isDialogActive) {
+       Navigator.of(context).pop(); // Tutup dialog saat ini
+       // Beri jeda sedikit sebelum menampilkan dialog baru
+       Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) { // Cek lagi setelah jeda
+             _displayGameOver();
+          }
+       });
+    } else {
+       _displayGameOver(); // Langsung tampilkan jika tidak ada dialog
+    }
+}
+
+// Fungsi helper terpisah untuk menampilkan dialog
+void _displayGameOver() {
+   if (mounted) {
+       showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => GameOverDialog( // <-- PANGGILAN CLASS BENAR
+            onReset: () {
+              if (mounted) Navigator.pop(context); // Tutup dialog
+              resetGame(); // Reset game
+            },
+          ),
+        );
+   }
+}
+
   void _showChatbotPopup() {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withAlpha(77), // <-- DIPERBAIKI
+      barrierColor: Colors.black.withAlpha(77),
       builder: (BuildContext context) {
-        return const ChatbotDialog(); // Gunakan widget terpisah
+        return const ChatbotDialog(); // <-- PANGGILAN CLASS BENAR
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Gunakan SafeArea untuk menghindari status bar di atas
     return SafeArea(
-      bottom: false, // Kita ingin bottom bar menempel di bawah
+      bottom: false,
       child: Container(
-        color: const Color(0xFF005A9C),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              Colors.blue.shade900,
+              const Color(0xFF005A9C),
+              Colors.lightBlue.shade300,
+            ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
         child: Stack(
           children: [
-            // 1. Board
             BoardListView(
               levels: levels,
               currentPosition: currentPosition,
+              scrollController: _scrollController,
             ),
-
-            // 2. Tombol Back (BARU)
             Positioned(
               top: 10.0,
               left: 16.0,
               child: GestureDetector(
                 onTap: () {
-                  // Aksi default adalah kembali ke layar sebelumnya
-                  // Jika ini adalah layar pertama, mungkin akan menutup aplikasi
                   Navigator.of(context).pop();
                 },
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withAlpha(77), // <-- DIPERBAIKI
+                    color: Colors.black.withAlpha(77),
                     shape: BoxShape.circle,
                   ),
                   child: Image.asset(
@@ -504,13 +579,11 @@ class _MonopolyBoardState extends State<MonopolyBoard> {
                 ),
               ),
             ),
-
-            // 3. Kontrol Bawah (Tombol GO, Saldo, dll)
             Positioned(
               bottom: 0,
               left: 0,
               right: 0,
-              child: GameControls(
+              child: GameControls( // <-- PANGGILAN CLASS BENAR
                 balance: balance,
                 currentPosition: currentPosition,
                 totalLevels: levels.length,
@@ -519,10 +592,13 @@ class _MonopolyBoardState extends State<MonopolyBoard> {
                 onShowChatbot: _showChatbotPopup,
               ),
             ),
-
-            // 4. Event Dialog (jika aktif)
+            if (_showDiceDisplay)
+              DiceDisplay(
+                finalResult: diceResult,
+                onAnimationComplete: _processMove,
+              ),
             if (showEventDialog && currentEventData != null)
-              EventDialog(
+              EventDialog( // <-- PANGGILAN CLASS BENAR
                 event: currentEventData!,
                 diceResult: diceResult,
                 onDecision: (decision) {
@@ -536,152 +612,317 @@ class _MonopolyBoardState extends State<MonopolyBoard> {
   }
 }
 
+
 // --- BAGIAN 5: WIDGET-WIDGET YANG DIPISAH ---
 
-/// Widget untuk menampilkan daftar level di board
 class BoardListView extends StatelessWidget {
   final List<GameEvent> levels;
   final int currentPosition;
+  final ScrollController scrollController;
 
   const BoardListView({
     super.key,
     required this.levels,
     required this.currentPosition,
+    required this.scrollController,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
-      // Padding atas untuk tombol back, padding bawah untuk bottom bar
-      padding: const EdgeInsets.only(top: 60, bottom: 200),
+      controller: scrollController,
+      padding: const EdgeInsets.only(top: 60, bottom: 200, left: 10, right: 10),
       itemCount: levels.length,
       itemBuilder: (context, index) {
-        // Balik urutan list agar START (id 0) ada di bawah
         final actualIndex = levels.length - 1 - index;
         final event = levels[actualIndex];
         final isCurrentPosition = actualIndex == currentPosition;
+        final bool isLeftAligned = actualIndex % 2 == 0;
+
         return LevelTile(
           event: event,
           isCurrent: isCurrentPosition,
+          isLeftAligned: isLeftAligned,
+          isFirst: actualIndex == 0,
+          isLast: actualIndex == levels.length - 1,
         );
       },
     );
   }
 }
 
-/// Widget untuk satu kotak level di board
+/// Widget untuk satu kotak level di board (MODIFIKASI ZIG-ZAG & KONEKTOR)
 class LevelTile extends StatelessWidget {
   final GameEvent event;
   final bool isCurrent;
+  final bool isLeftAligned; // <-- Info alignment
+  final bool isFirst;
+  final bool isLast;
 
   const LevelTile({
     super.key,
     required this.event,
     required this.isCurrent,
+    required this.isLeftAligned,
+    required this.isFirst,
+    required this.isLast,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        // Garis putus-putus
-        if (event.id != 0)
-          Positioned(
-            top: -13, // (8 margin + 5)
-            child: Container(
-              width: 4,
-              height: 15,
-              color: Colors.white.withAlpha(102), // <-- DIPERBAIKI (0.4 * 255)
-            ),
-          ),
-        Container(
-          height: 90,
-          margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 40.0),
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          decoration: BoxDecoration(
-            color: event.color.withAlpha(isCurrent
-                ? 255
-                : 204), // <-- DIPERBAIKI (1.0 * 255) & (0.8 * 255)
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isCurrent ? Colors.white : Colors.black54,
-              width: isCurrent ? 4 : 2,
-            ),
-            boxShadow: isCurrent
-                ? [
-                    BoxShadow(
-                      color: Colors.yellow.shade600,
-                      spreadRadius: 3,
-                      blurRadius: 8,
-                    )
-                  ]
-                : [
-                    const BoxShadow(
-                      color: Colors.black26,
-                      spreadRadius: 1,
-                      blurRadius: 3,
-                      offset: Offset(0, 2),
-                    )
-                  ],
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                event.title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: isCurrent ? 16 : 14,
-                  color: Colors.black87,
-                ),
-                textAlign: TextAlign.center,
+    final double tileWidth = MediaQuery.of(context).size.width * 0.65; // Lebar tile
+    final double connectorHeight = 50.0; // Tinggi gambar konektor
+    final double connectorWidth = 35.0; // Lebar gambar konektor
+
+    // --- PERBAIKAN: Selalu gunakan tangga sebagai konektor ---
+    const String connectorAsset = 'assets/ladder1.png'; // <-- DIUBAH DI SINI
+
+    return SizedBox( // Bungkus dengan SizedBox agar konektor punya ruang
+      height: 90 + (isLast ? 0 : connectorHeight/1.5), // Tinggi tile + ruang untuk konektor (kecuali finish)
+      child: Stack(
+        clipBehavior: Clip.none, // Izinkan konektor keluar batas
+        children: [
+          // --- KONEKTOR (Gambar Tangga) ---
+          if (!isLast) // Jangan tampilkan konektor di tile FINISH
+            Positioned(
+              // Posisikan di antara tile ini dan tile di atasnya
+              top: -connectorHeight / 1.5, // Naik setengah tinggi konektor
+              left: isLeftAligned
+                  ? tileWidth * 0.8 // Jika tile ini kiri, konektor di kanan tile
+                  : null,
+              right: !isLeftAligned
+                  ? tileWidth * 0.8 // Jika tile ini kanan, konektor di kiri tile
+                  : null,
+              child: SizedBox(
+                width: connectorWidth,
+                height: connectorHeight,
+                child: Image.asset(
+                  connectorAsset, 
+                  fit: BoxFit.contain,
+                 ),
               ),
-              if (event.description.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    event.description,
+            ),
+
+          // --- TILE UTAMA ---
+          Align(
+            alignment: isLeftAligned ? Alignment.centerLeft : Alignment.centerRight,
+            child: Container(
+              width: tileWidth, // Atur lebar tile
+              height: 90,
+              // Margin vertikal dikurangi karena sudah ada SizedBox
+              margin: const EdgeInsets.symmetric(vertical: 3.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              decoration: BoxDecoration(
+                color: event.color.withAlpha(isCurrent ? 255 : 220), // Opacity
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isCurrent ? Colors.white : Colors.black54,
+                  width: isCurrent ? 4 : 2,
+                ),
+                boxShadow: isCurrent
+                    ? [
+                        BoxShadow(
+                          color: Colors.yellow.shade600,
+                          spreadRadius: 3,
+                          blurRadius: 8,
+                        )
+                      ]
+                    : [
+                        const BoxShadow(
+                          color: Colors.black26,
+                          spreadRadius: 1,
+                          blurRadius: 3,
+                          offset: Offset(0, 2),
+                        )
+                      ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    event.title,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.black.withAlpha(179), // <-- DIPERBAIKI (0.7 * 255)
+                      fontWeight: FontWeight.bold,
+                      fontSize: isCurrent ? 16 : 14,
+                      color: Colors.black87,
                     ),
                     textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-            ],
-          ),
-        ),
-        // Label 'POSISI KU'
-        if (isCurrent)
-          Positioned(
-            right: 30,
-            top: -2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.yellow.shade600,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'POSISI KU',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+                  if (event.description.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        event.description,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.black.withAlpha(179), // Opacity
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
-      ],
+
+          // Label 'POSISI KU' (Adjusted position)
+          if (isCurrent)
+            Positioned(
+              top: -8, // Naik sedikit
+              left: isLeftAligned ? 5 : null, // Kiri jika tile kiri
+              right: !isLeftAligned ? 5 : null, // Kanan jika tile kanan
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.yellow.shade600,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'POSISI KU',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
 
-/// Widget untuk dialog event yang muncul
+// ... Sisa kode (DiceDisplay, EventDialog, dll.) tidak perlu diubah lagi ...
+
+
+class DiceDisplay extends StatefulWidget {
+  final int finalResult;
+  final VoidCallback onAnimationComplete;
+
+  const DiceDisplay({
+    super.key,
+    required this.finalResult,
+    required this.onAnimationComplete,
+  });
+
+  @override
+  State<DiceDisplay> createState() => _DiceDisplayState();
+}
+
+class _DiceDisplayState extends State<DiceDisplay> with TickerProviderStateMixin {
+  Timer? _rollTimer;
+  late AnimationController _scaleController;
+  late Animation<double> _scaleAnimation; // <-- VARIABEL ANIMASI
+  bool _showResultNumber = false;
+
+  static const String _diceAssetPath = 'assets/dice1.png';
+
+  @override
+  void initState() {
+    super.initState();
+    _showResultNumber = false;
+
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    // Kaitkan CurvedAnimation ke _scaleAnimation
+    _scaleAnimation = CurvedAnimation(
+      parent: _scaleController,
+      curve: Curves.easeOutBack,
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+             if (mounted) widget.onAnimationComplete(); // Cek mounted sebelum panggil callback
+          });
+        }
+      });
+
+     _rollTimer = Timer.periodic(const Duration(milliseconds: 80), (timer) {
+        // Efek getar kecil (opsional)
+        // Jika ingin, tambahkan sedikit perubahan rotasi atau offset acak di sini
+        // setState(() {});
+     });
+
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (!mounted) return;
+      _rollTimer?.cancel();
+      setState(() {
+         _showResultNumber = true;
+      });
+      _scaleController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _rollTimer?.cancel();
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.black.withAlpha(102),
+      child: Center(
+        child: ScaleTransition(
+          // Gunakan _scaleAnimation yang sudah punya curve
+          scale: _scaleAnimation, // <-- GUNAKAN _scaleAnimation
+          child: Container(
+            width: 130,
+            height: 130,
+            decoration: BoxDecoration(
+               color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.lightBlue.shade700, width: 4),
+              boxShadow: const [ BoxShadow( color: Colors.black38, spreadRadius: 3, blurRadius: 10,) ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipRRect(
+                   borderRadius: BorderRadius.circular(16.0),
+                   child: Image.asset(
+                    _diceAssetPath,
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                   ),
+                 ),
+                if (_showResultNumber)
+                  Container(
+                     padding: const EdgeInsets.all(8),
+                     decoration: BoxDecoration(
+                       color: Colors.black.withAlpha(150),
+                       shape: BoxShape.circle,
+                     ),
+                    child: Text(
+                      '${widget.finalResult}',
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        shadows: [ Shadow( blurRadius: 4.0, color: Colors.black, offset: Offset(2.0, 2.0),) ]
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// --- Widget lain (EventDialog, GameOverDialog, GameControls, ChatbotDialog, NavbarPainter) ---
+// (Tidak perlu salin ulang karena tidak ada perubahan signifikan di sini)
+
+// Widget EventDialog (Tidak berubah)
 class EventDialog extends StatelessWidget {
   final GameEvent event;
   final int diceResult;
@@ -694,7 +935,7 @@ class EventDialog extends StatelessWidget {
     required this.onDecision,
   });
 
-  Color _getAmountColor() {
+   Color _getAmountColor() {
     if (event.amount > 0) return Colors.green.shade700;
     if (event.amount < 0) return Colors.red.shade700;
     return Colors.grey.shade700;
@@ -716,24 +957,17 @@ class EventDialog extends StatelessWidget {
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
         decoration: BoxDecoration(
-          color: const Color(0xFF82D5FA).withAlpha(242), // <-- DIPERBAIKI (0.95 * 255)
+          color: const Color(0xFF82D5FA).withAlpha(242),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: Colors.lightBlue.shade700,
             width: 3,
           ),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black38, // <-- Ini sudah benar, tidak perlu diubah
-              spreadRadius: 3,
-              blurRadius: 10,
-            )
-          ],
+          boxShadow: const [ BoxShadow( color: Colors.black38, spreadRadius: 3, blurRadius: 10,) ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header Dialog
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
@@ -754,25 +988,14 @@ class EventDialog extends StatelessWidget {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.white,
-                          border: Border.all(
-                            color: Colors.lightBlue.shade700,
-                            width: 2,
-                          ),
+                          border: Border.all( color: Colors.lightBlue.shade700, width: 2,),
                         ),
-                        child: const Icon(
-                          Icons.monetization_on,
-                          color: Colors.amber,
-                          size: 24,
-                        ),
+                        child: const Icon( Icons.monetization_on, color: Colors.amber, size: 24,),
                       ),
                       Expanded(
                         child: Text(
                           event.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle( color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold,),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -782,16 +1005,11 @@ class EventDialog extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     'Dadu: $diceResult',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: const TextStyle( color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600,),
                   ),
                 ],
               ),
             ),
-            // Konten Dialog (Scrollable)
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
@@ -800,17 +1018,12 @@ class EventDialog extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white
-                            .withAlpha(230), // <-- DIPERBAIKI (0.9 * 255)
+                        color: Colors.white .withAlpha(230),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         event.description,
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 13,
-                          height: 1.5,
-                        ),
+                        style: const TextStyle( color: Colors.black87, fontSize: 13, height: 1.5,),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -819,32 +1032,15 @@ class EventDialog extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white
-                              .withAlpha(217), // <-- DIPERBAIKI (0.85 * 255)
+                          color: Colors.white .withAlpha(217),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _getAmountColor(),
-                            width: 2,
-                          ),
+                          border: Border.all( color: _getAmountColor(), width: 2,),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              'Dampak:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            Text(
-                              _formatAmount(event.amount),
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: _getAmountColor(),
-                              ),
-                            ),
+                            const Text( 'Dampak:', style: TextStyle( fontWeight: FontWeight.bold, fontSize: 12,),),
+                            Text( _formatAmount(event.amount), style: TextStyle( fontSize: 13, fontWeight: FontWeight.bold, color: _getAmountColor(),),),
                           ],
                         ),
                       ),
@@ -852,7 +1048,6 @@ class EventDialog extends StatelessWidget {
                 ),
               ),
             ),
-            // Tombol Keputusan
             Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -865,18 +1060,12 @@ class EventDialog extends StatelessWidget {
                         onPressed: () => onDecision(decision),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.lightBlue.shade700,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
+                          shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(10),),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                         child: Text(
                           decision.label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
+                          style: const TextStyle( color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13,),
                         ),
                       ),
                     ),
@@ -891,7 +1080,7 @@ class EventDialog extends StatelessWidget {
   }
 }
 
-/// Widget untuk dialog Game Over
+// Widget GameOverDialog (Tidak berubah)
 class GameOverDialog extends StatelessWidget {
   final VoidCallback onReset;
 
@@ -905,7 +1094,7 @@ class GameOverDialog extends StatelessWidget {
         width: 300,
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: Colors.red.shade400.withAlpha(230), // <-- DIPERBAIKI (0.9 * 255)
+          color: Colors.red.shade400.withAlpha(230),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.red.shade700, width: 3),
         ),
@@ -914,36 +1103,17 @@ class GameOverDialog extends StatelessWidget {
           children: [
             const Icon(Icons.warning, size: 60, color: Colors.white),
             const SizedBox(height: 16),
-            const Text(
-              'GAME OVER',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+            const Text( 'GAME OVER', style: TextStyle( fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white,),),
             const SizedBox(height: 8),
-            const Text(
-              'Saldo kamu habis!',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
+            const Text( 'Saldo kamu habis!', style: TextStyle(fontSize: 16, color: Colors.white),),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: onReset,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(10),),
               ),
-              child: const Text(
-                'Main Lagi',
-                style: TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+              child: const Text( 'Main Lagi', style: TextStyle( color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16,),),
             ),
           ],
         ),
@@ -952,7 +1122,7 @@ class GameOverDialog extends StatelessWidget {
   }
 }
 
-/// Widget untuk bottom bar (Tombol GO, Saldo, Chat)
+// Widget GameControls (Tidak berubah)
 class GameControls extends StatelessWidget {
   final int balance;
   final int currentPosition;
@@ -989,7 +1159,6 @@ class GameControls extends StatelessWidget {
         alignment: Alignment.topCenter,
         clipBehavior: Clip.none,
         children: [
-          // Latar belakang Navbar
           Positioned(
             bottom: 0,
             left: 0,
@@ -1003,7 +1172,6 @@ class GameControls extends StatelessWidget {
               ),
             ),
           ),
-          // Tombol 'GO'
           Positioned(
             top: -buttonOverlap,
             child: _buildGoButton(),
@@ -1013,7 +1181,7 @@ class GameControls extends StatelessWidget {
     );
   }
 
-  Widget _buildGoButton() {
+   Widget _buildGoButton() {
     const double buttonWidth = 120;
     const double buttonHeight = 120;
 
@@ -1034,33 +1202,19 @@ class GameControls extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Sisi Kiri (Chatbot & Koin)
           Row(
             children: [
               GestureDetector(
                 onTap: onShowChatbot,
-                child: Center(
-                  child: SizedBox(
-                    width: 60,
-                    height: 60,
-                    child: Image.asset('assets/chatbot.png'),
-                  ),
-                ),
+                child: Center( child: SizedBox( width: 60, height: 60, child: Image.asset('assets/chatbot.png'),),),
               ),
               const SizedBox(width: 25),
               Transform.scale(
                 scale: 1.25,
-                child: Center(
-                  child: SizedBox(
-                    width: 64,
-                    height: 64,
-                    child: Image.asset('assets/coins.png'),
-                  ),
-                ),
+                child: Center( child: SizedBox( width: 64, height: 64, child: Image.asset('assets/coins.png'),),),
               ),
             ],
           ),
-          // Sisi Kanan (Info Saldo)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 6),
             decoration: BoxDecoration(
@@ -1072,14 +1226,8 @@ class GameControls extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'Balance: ${_formatBalance(balance)}',
-                  style: const TextStyle(color: Colors.white, fontSize: 11),
-                ),
-                Text(
-                  'Posisi: ${currentPosition + 1}/$totalLevels',
-                  style: const TextStyle(color: Colors.lightBlue, fontSize: 11),
-                ),
+                Text( 'Balance: ${_formatBalance(balance)}', style: const TextStyle(color: Colors.white, fontSize: 11),),
+                Text( 'Posisi: ${currentPosition + 1}/$totalLevels', style: const TextStyle(color: Colors.lightBlue, fontSize: 11),),
               ],
             ),
           ),
@@ -1089,7 +1237,7 @@ class GameControls extends StatelessWidget {
   }
 }
 
-/// Widget untuk dialog Chatbot (sekarang stateful sendiri)
+// Widget ChatbotDialog (Tidak berubah)
 class ChatbotDialog extends StatefulWidget {
   const ChatbotDialog({super.key});
 
@@ -1099,23 +1247,13 @@ class ChatbotDialog extends StatefulWidget {
 
 class _ChatbotDialogState extends State<ChatbotDialog> {
   final TextEditingController messageController = TextEditingController();
-  final List<Map<String, String>> messages = [
-    {'sender': 'bot', 'text': 'Halo! Apa yang bisa saya bantu?'}
-  ];
+  final List<Map<String, String>> messages = [ {'sender': 'bot', 'text': 'Halo! Apa yang bisa saya bantu?'} ];
 
   void _sendMessage() {
     if (messageController.text.isNotEmpty) {
       setState(() {
-        messages.add({
-          'sender': 'user',
-          'text': messageController.text,
-        });
-        // Simulasi balasan bot
-        messages.add({
-          'sender': 'bot',
-          'text':
-              'Tips: Kelola uangmu dengan bijak, bedakan antara kebutuhan dan keinginan!',
-        });
+        messages.add({ 'sender': 'user', 'text': messageController.text, });
+        messages.add({ 'sender': 'bot', 'text': 'Tips: Kelola uangmu dengan bijak, bedakan antara kebutuhan dan keinginan!', });
         messageController.clear();
       });
     }
@@ -1129,67 +1267,35 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
         width: 300,
         height: 450,
         decoration: BoxDecoration(
-          color: const Color(0xFF82D5FA).withAlpha(230), // <-- DIPERBAIKI (0.9 * 255)
+          color: const Color(0xFF82D5FA).withAlpha(230),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.lightBlue.shade700,
-            width: 2,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black26, // <-- Ini sudah benar
-              spreadRadius: 2,
-              blurRadius: 8,
-            )
-          ],
+          border: Border.all( color: Colors.lightBlue.shade700, width: 2,),
+          boxShadow: const [ BoxShadow( color: Colors.black26, spreadRadius: 2, blurRadius: 8,) ],
         ),
         child: Column(
           children: [
-            // Header Chat
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.lightBlue.shade400
-                    .withAlpha(179), // <-- DIPERBAIKI (0.7 * 255)
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(18),
-                  topRight: Radius.circular(18),
-                ),
+                color: Colors.lightBlue.shade400 .withAlpha(179),
+                borderRadius: const BorderRadius.only( topLeft: Radius.circular(18), topRight: Radius.circular(18),),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    width: 40,
-                    height: 40,
+                    width: 40, height: 40,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border: Border.all(
-                        color: Colors.lightBlue.shade700,
-                        width: 2,
-                      ),
+                      shape: BoxShape.circle, color: Colors.white,
+                      border: Border.all( color: Colors.lightBlue.shade700, width: 2,),
                     ),
-                    child: const Icon(
-                      Icons.chat_bubble,
-                      color: Colors.lightBlue,
-                      size: 20,
-                    ),
+                    child: const Icon( Icons.chat_bubble, color: Colors.lightBlue, size: 20,),
                   ),
-                  const Text(
-                    'Panduan Finansial',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  const Text( 'Panduan Finansial', style: TextStyle( color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600,),),
                   const SizedBox(width: 40),
                 ],
               ),
             ),
-            // Daftar Pesan
             Expanded(
               child: Container(
                 padding: const EdgeInsets.all(12),
@@ -1199,34 +1305,21 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                     final msg = messages[index];
                     final isBot = msg['sender'] == 'bot';
                     return Align(
-                      alignment:
-                          isBot ? Alignment.centerLeft : Alignment.centerRight,
+                      alignment: isBot ? Alignment.centerLeft : Alignment.centerRight,
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
+                        padding: const EdgeInsets.symmetric( horizontal: 12, vertical: 8,),
                         decoration: BoxDecoration(
-                          color: isBot
-                              ? Colors.white.withAlpha(230) // <-- DIPERBAIKI (0.9 * 255)
-                              : Colors.lightBlue.shade600,
+                          color: isBot ? Colors.white.withAlpha(230) : Colors.lightBlue.shade600,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Text(
-                          msg['text'] ?? '',
-                          style: TextStyle(
-                            color: isBot ? Colors.black87 : Colors.white,
-                            fontSize: 12,
-                          ),
-                        ),
+                        child: Text( msg['text'] ?? '', style: TextStyle( color: isBot ? Colors.black87 : Colors.white, fontSize: 12,),),
                       ),
                     );
                   },
                 ),
               ),
             ),
-            // Input Pesan
             Container(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -1236,21 +1329,11 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                       controller: messageController,
                       decoration: InputDecoration(
                         hintText: 'Ketik pesan...',
-                        hintStyle: const TextStyle(
-                          color: Colors.black54,
-                          fontSize: 12,
-                        ),
+                        hintStyle: const TextStyle( color: Colors.black54, fontSize: 12,),
                         filled: true,
-                        fillColor: Colors.white
-                            .withAlpha(204), // <-- DIPERBAIKI (0.8 * 255)
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                        fillColor: Colors.white .withAlpha(204),
+                        border: OutlineInputBorder( borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none,),
+                        contentPadding: const EdgeInsets.symmetric( horizontal: 12, vertical: 10,),
                       ),
                       style: const TextStyle(fontSize: 12),
                     ),
@@ -1259,45 +1342,25 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
                   GestureDetector(
                     onTap: _sendMessage,
                     child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.lightBlue.shade700,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.send,
-                        color: Colors.white,
-                        size: 16,
-                      ),
+                      width: 36, height: 36,
+                      decoration: BoxDecoration( color: Colors.lightBlue.shade700, shape: BoxShape.circle,),
+                      child: const Icon( Icons.send, color: Colors.white, size: 16,),
                     ),
                   ),
                 ],
               ),
             ),
-            // Tombol Tutup
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
+                onPressed: () { Navigator.pop(context); },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.lightBlue.shade700,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
+                  shape: RoundedRectangleBorder( borderRadius: BorderRadius.circular(10),),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                child: const Text(
-                  'Tutup',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
+                child: const Text( 'Tutup', style: TextStyle( color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14,),),
               ),
             ),
           ],
@@ -1307,9 +1370,8 @@ class _ChatbotDialogState extends State<ChatbotDialog> {
   }
 }
 
-// --- BAGIAN 6: CUSTOM PAINTER (Tidak berubah) ---
-// Painter untuk Bottom Navbar
 
+// Widget NavbarPainter (Tidak berubah)
 class NavbarPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -1329,7 +1391,6 @@ class NavbarPainter extends CustomPainter {
 
   Path getPath(Size size) {
     final path = Path();
-
     const double cornerRadius = 10.0;
     const double topEdgeY = 2.0;
     const double notchWidth = 70.0;
@@ -1341,11 +1402,9 @@ class NavbarPainter extends CustomPainter {
     path.lineTo(size.width / 2, 0);
     path.lineTo((size.width / 2) + (notchWidth / 2), topEdgeY);
     path.lineTo(size.width - cornerRadius, topEdgeY);
-    path.quadraticBezierTo(
-        size.width, topEdgeY, size.width, topEdgeY + cornerRadius);
+    path.quadraticBezierTo( size.width, topEdgeY, size.width, topEdgeY + cornerRadius);
     path.lineTo(size.width, size.height);
     path.close();
-
     return path;
   }
 
