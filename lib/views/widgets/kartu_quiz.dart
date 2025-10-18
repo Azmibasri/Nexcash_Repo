@@ -5,12 +5,16 @@ class KatruQuiz extends StatelessWidget {
   final String bagian;
   final String judul;
   final String keterangan;
+  final VoidCallback onPressed;
+
   const KatruQuiz({
     super.key,
     required this.bagian,
     required this.judul,
-    required this.keterangan
-    });
+    required this.keterangan,
+    required this.onPressed, 
+  });
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -48,12 +52,15 @@ class KatruQuiz extends StatelessWidget {
                     SizedBox(height: 10),
                     Text(judul),
                     SizedBox(height: 5),
-                    ButtonHome(keterangan: keterangan,),
+                    ButtonHome(
+                      keterangan: keterangan,
+                      onPressed: onPressed, 
+                    ),
                   ],
                 ),
               ),
             ),
-            Flexible(child: Image.asset("assets/money.png",)),
+            Flexible(child: Image.asset("assets/money.png")),
           ],
         ),
       ),
