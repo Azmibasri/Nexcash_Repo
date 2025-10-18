@@ -13,6 +13,7 @@ class ProfileScreens extends StatefulWidget {
 
 class _ProfileScreens extends State<ProfileScreens> {
 
+
   void _onItemTapped(int index) {
     if (index == 1) {
       Navigator.push(
@@ -101,7 +102,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                           children: [
                             SizedBox(height: 90.0),
                             Text(
-                              "Rafid Khaulika",
+                              "Rafid Kaulita",
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.bold,
@@ -109,7 +110,7 @@ class _ProfileScreens extends State<ProfileScreens> {
                               ),
                             ),
                             Text(
-                              "@Rafid123",
+                              "@Eddie123",
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.black54,
@@ -125,9 +126,9 @@ class _ProfileScreens extends State<ProfileScreens> {
                                 crossAxisCount: 2,
                                 shrinkWrap: true,
                                 physics: NeverScrollableScrollPhysics(),
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 1.5, 
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                                childAspectRatio: 1.0, 
                                 children: [
                                   _buildBadgeCard(
                                     Image.asset("assets/leader.png"),
@@ -246,7 +247,7 @@ class _ProfileScreens extends State<ProfileScreens> {
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black,
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 4,
             offset: Offset(0, 2),
           ),
